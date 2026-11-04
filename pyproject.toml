@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openagent-ds-search"
+version = "0.1.0"
+description = "只带「联网搜索」一个能力的 agent：search 定位 + fetch 读全文，harness 交给 AgentScope"
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+license-files = ["LICENSE"]
+authors = [{ name = "Yifei Yang", email = "274529723+YY-Yifei@users.noreply.github.com" }]
+keywords = [
+    "agent",
+    "agentscope",
+    "deepseek",
+    "web-search",
+    "search",
+    "fetch",
+    "llm",
+    "cli",
+    "ai-agent",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Typing :: Typed",
+]
+# 为什么锁定 minor 区间（评审 4.1）：本项目实际依赖 AgentScope 的具体实现细节 ——
+# `state.context` / `state.summary` 的累积语义、`permission_context.mode`、以及
+# `compress_context()` 低于阈值直接 return 的行为。这些都不是稳定的公开契约，
+# 跨 minor 升级可能**静默**改变压缩与权限行为（不报错，只是行为不一样）。
+# 已验证 2.0.6（本地 editable 源码）与 2.0.5（评审环境）。升级请走受控验证。
+dependencies = ["agentscope>=2.0.5,<2.1"]
+
+[project.optional-dependencies]
+# 只有想跑测试 / 自己打包发版的人才需要装它
+dev = ["pytest>=8", "build>=1.2", "twine>=5"]
+
+[project.urls]
+Homepage = "https://github.com/YY-Yifei/openagent-ds-search"
+Repository = "https://github.com/YY-Yifei/openagent-ds-search"
+Issues = "https://github.com/YY-Yifei/openagent-ds-search/issues"
+Changelog = "https://github.com/YY-Yifei/openagent-ds-search/blob/main/CHANGELOG.md"
+
+[project.scripts]
+# 主命令：连字符（PEP 508 的脚本名允许连字符，导入名才是下划线）
+openagent-ds-search = "openagent_ds_search.cli:main"
+# 兼容别名，老脚本不用改
+ds-search = "openagent_ds_search.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
