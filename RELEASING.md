@@ -32,47 +32,45 @@ python -c "import zipfile,glob;z=zipfile.ZipFile(glob.glob('dist/*.whl')[0]);pri
 
 ## 2. 推 GitHub
 
-**第一步永远是先去 https://github.com/new 建一个「空」仓库**（名字 `openagent-ds-search`，
-不要勾 README / .gitignore / license —— 本地已经有了）。没有 token 就没法用 API 建仓，
-这一步只能手工点。
+仓库已存在：<https://github.com/YY-Yifei/openagent-ds-search>（2026-11-05 建，public）。
 
-建好之后二选一：
+### 本机网络实测（别再把这条通道判错）
 
-### 路线 A：HTTPS（有 PAT 时最省事）
+| 通道 | 实测 |
+|---|---|
+| `ssh -T git@github.com`（22 端口） | ✅ `Hi YY-Yifei! You've successfully authenticated` —— 公钥**早已登记** |
+| `git push` 走 SSH | ✅ 可用，`origin` 已指向 `git@github.com:YY-Yifei/openagent-ds-search.git` |
+| `https://api.github.com`（443） | ✅ 通（`curl` / `gh` 都行） |
+| `git push` 走 HTTPS（443） | ❌ `Failed to connect to github.com port 443` |
+
+**结论：推代码走 SSH，建仓 / 建 Release / 改仓库设置走 API。**
+这两个是不同通道 —— HTTPS 挂掉不代表没权限，SSH 通也不代表能调 API。
+
+### 新建仓库（换项目时才需要）
+
+有 `GITHUB_TOKEN` 就直接打 API，不用点网页：
 
 ```bash
-git remote set-url origin https://github.com/YY-Yifei/openagent-ds-search.git
+curl -X POST -H "Authorization: Bearer %GITHUB_TOKEN%" \
+     -H "Accept: application/vnd.github+json" \
+     -H "Content-Type: application/json" \
+     --data-binary "@repo-create.json" \
+     https://api.github.com/user/repos
+```
+
+`repo-create.json` 里**必须** `"auto_init": false` —— 否则远端会多一个初始提交，
+第一次 `push` 直接冲突（`fetch first`）。
+
+没有 token 才回退到 <https://github.com/new> 手工建，名字 `openagent-ds-search`，
+**不要**勾 README / .gitignore / license（本地都有了）。
+
+### 推
+
+```bash
+git remote set-url origin git@github.com:YY-Yifei/openagent-ds-search.git
 git push -u origin main
 git push origin v0.1.0
 ```
-
-PAT 在 https://github.com/settings/tokens 生成（勾 `repo`）。凭据会被 Windows
-凭据管理器记住，不用每次输。
-
-### 路线 B：SSH（本机实测 443 连不上时走这条）
-
-这台机器上 `git push` 走 HTTPS 会卡在
-`Failed to connect to github.com port 443`，而 `ssh -T git@github.com` 是**通的**
-（返回 `Permission denied (publickey)` —— 说明能连上，只是公钥还没登记）。
-所以：
-
-1. 把本机公钥贴进 https://github.com/settings/keys → New SSH key：
-
-   ```
-   ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMbgdFXybdo8hBnPh768cmGixPNRfkxX/DFXyprmGRmF 274529723+YY-Yifei@users.noreply.github.com
-   ```
-
-2. 验证：`ssh -T git@github.com` 应回 `Hi YY-Yifei! You've successfully authenticated...`
-
-3. 推：
-
-   ```bash
-   git remote set-url origin git@github.com:YY-Yifei/openagent-ds-search.git
-   git push -u origin main
-   git push origin v0.1.0
-   ```
-
-> 仓库里已经配好 `origin`（HTTPS 地址）与 tag `v0.1.0`，只差一次 `push`。
 
 之后每次发版：
 
@@ -80,6 +78,27 @@ PAT 在 https://github.com/settings/tokens 生成（勾 `repo`）。凭据会被
 git add -A && git commit -m "release: v0.1.1"
 git tag -a v0.1.1 -m "v0.1.1"
 git push && git push --tags
+```
+
+### Release 页面（可选，但推荐）
+
+tag 推上去不等于有 Release 页面 —— 要单独建一条，把改动说明写清楚：
+
+```bash
+curl -X POST -H "Authorization: Bearer %GITHUB_TOKEN%" \
+     -H "Accept: application/vnd.github+json" \
+     -H "Content-Type: application/json" \
+     --data-binary "@release.json" \
+     https://api.github.com/repos/YY-Yifei/openagent-ds-search/releases
+```
+
+`release.json` 的 `tag_name` 用已存在的 `v0.1.0`，`body` 从 `CHANGELOG.md` 那一节抄。
+
+### 推完确认
+
+```bash
+git ls-remote origin                  # 看 main 与 v0.1.0 两个 ref 都在
+git ls-tree --name-only origin/main   # 看远端树里有 LICENSE / pyproject.toml / src
 ```
 
 ## 3. 发 PyPI
@@ -104,6 +123,7 @@ Python 会直接 `Fatal Python error: preconfig_init_utf8_mode`。）
   username = __token__
   password = pypi-xxxxxxxx...
   ```
+
 - **临时用环境变量**（CI 里更合适）：
   ```bash
   set TWINE_USERNAME=__token__
